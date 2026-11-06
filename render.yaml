@@ -6,7 +6,7 @@ services:
     runtime: node
     plan: free
     region: singapore
-    buildCommand: cd client && npm ci && npm run build && cd ../server && npm ci --omit=dev
+    buildCommand: cd client && npm ci --include=dev && npm run build && cd ../server && npm ci --omit=dev
     startCommand: cd server && npm run start:prod
     healthCheckPath: /health
     envVars:
