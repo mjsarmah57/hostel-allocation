@@ -6,6 +6,7 @@ const bcrypt = require('bcrypt');
 const env = require('../src/config/env');
 const {
   sequelize, Role, Permission, RolePermission, User, Student, Hostel, Room, Bed, AllocationRound, Preference, Allocation,
+  Complaint, ComplaintEvent,
 } = require('../src/models');
 
 // Deterministic pseudo-random generator so every seed produces the same data.
@@ -16,11 +17,15 @@ const shuffle = (arr) => arr.map((v) => [rand(), v]).sort((a, b) => a[0] - b[0])
 const chunk = (arr, n) => Array.from({ length: Math.ceil(arr.length / n) }, (_, i) => arr.slice(i * n, i * n + n));
 
 const PERMISSIONS = {
-  student: ['hostel:read', 'round:read', 'preference:submit', 'booking:create', 'allocation:read_own', 'receipt:upload', 'swap:create'],
-  warden: ['hostel:read', 'round:read', 'allocation:read', 'allocation:update', 'receipt:verify', 'swap:approve', 'report:read'],
+  student: ['hostel:read', 'round:read', 'preference:submit', 'booking:create', 'allocation:read_own', 'receipt:upload', 'swap:create', 'complaint:create'],
+  warden: [
+    'hostel:read', 'round:read', 'allocation:read', 'allocation:update', 'receipt:verify', 'swap:approve', 'report:read',
+    'complaint:manage', 'student:read', 'dashboard:read',
+  ],
   admin: [
     'hostel:read', 'hostel:all', 'round:read', 'round:manage', 'allocation:run', 'allocation:read', 'allocation:update',
     'allocation:release', 'receipt:verify', 'swap:approve', 'report:read', 'audit:read',
+    'complaint:manage', 'student:read', 'student:approve', 'user:manage', 'hostel:manage', 'dashboard:read',
   ],
 };
 
@@ -48,7 +53,7 @@ const STUDENTS = 5000;
 async function main() {
   console.time('seed');
   console.log('Clearing tables...');
-  await sequelize.query(`TRUNCATE fee_receipts, swap_requests, allocations, preferences, allocation_rounds,
+  await sequelize.query(`TRUNCATE complaint_events, complaints, fee_receipts, swap_requests, allocations, preferences, allocation_rounds,
     beds, rooms, hostels, students, refresh_tokens, users, role_permissions, permissions, roles RESTART IDENTITY CASCADE`);
 
   // ---------- RBAC ----------
@@ -171,10 +176,57 @@ async function main() {
   }
   for (const part of chunk(prefRows, 3000)) await Preference.bulkCreate(part);
 
+  // ---------- Pending self-registrations (admin approval queue) ----------
+  const pending = [
+    ['Pranjal Bora', 'MALE', 1, 'MCA', '8.20'], ['Ishita Nair', 'FEMALE', 1, 'MSc', '8.90'],
+    ['Dhruv Mehta', 'MALE', 2, 'BTech', '7.40'], ['Nandini Ghosh', 'FEMALE', 3, 'BTech', '9.30'],
+    ['Kabir Khan', 'MALE', 1, 'MTech', '7.85'], ['Riya Joshi', 'FEMALE', 2, 'MCA', '8.05'],
+  ];
+  for (const [k, [name, gender, year, program, cgpa]] of pending.entries()) {
+    const u = await User.create({
+      email: `new${k + 1}@hostel.edu`, name, passwordHash: studentHash, roleId: roles.student.id,
+      approvalStatus: 'PENDING', phone: `98${String(54000000 + k * 1111).padStart(8, '0')}`,
+      createdAt: new Date(Date.now() - (k + 1) * 3600 * 1000),
+    });
+    await Student.create({ userId: u.id, rollNo: `HR9${String(k + 1).padStart(4, '0')}`, gender, year, program, cgpa });
+  }
+
+  // ---------- Complaint history from last session ----------
+  const lastSession = await Allocation.findAll({ where: { session: '2025-26' }, include: [{ model: Bed, attributes: ['roomId'] }], limit: 400 });
+  const CATS = ['ELECTRICAL', 'PLUMBING', 'FURNITURE', 'CLEANING', 'INTERNET', 'OTHER'];
+  const TITLES = {
+    ELECTRICAL: ['Fan not working', 'Tube light flickering', 'Power socket sparking'],
+    PLUMBING: ['Tap leaking in washroom', 'No hot water', 'Drain blocked'],
+    FURNITURE: ['Broken chair', 'Cupboard lock jammed', 'Bed frame loose'],
+    CLEANING: ['Corridor not cleaned', 'Dustbin not emptied'],
+    INTERNET: ['Wi-Fi drops every evening', 'LAN port dead'],
+    OTHER: ['Window glass cracked', 'Mosquito net torn'],
+  };
+  const admin = await User.findOne({ where: { email: 'admin@hostel.edu' } });
+  for (const a of shuffle(lastSession).slice(0, 90)) {
+    const category = pick(CATS);
+    const created = new Date(Date.now() - Math.floor(rand() * 120) * 24 * 3600 * 1000);
+    const r = rand();
+    const status = r < 0.55 ? 'CLOSED' : r < 0.8 ? 'RESOLVED' : r < 0.92 ? 'IN_PROGRESS' : 'OPEN';
+    const c = await Complaint.create({
+      studentId: a.studentId, roomId: a.bed.roomId, category, priority: pick(['LOW', 'MEDIUM', 'MEDIUM', 'HIGH']),
+      title: pick(TITLES[category]), description: 'Reported by the student during the 2025-26 session.',
+      status, createdAt: created, updatedAt: created,
+      resolvedAt: ['RESOLVED', 'CLOSED'].includes(status) ? new Date(created.getTime() + 2 * 24 * 3600 * 1000) : null,
+    });
+    const s2 = await Student.findByPk(a.studentId, { attributes: ['userId'] });
+    const events = [{ complaintId: c.id, actorId: s2.userId, fromStatus: null, toStatus: 'OPEN', note: 'Complaint raised', createdAt: created }];
+    if (status !== 'OPEN') events.push({ complaintId: c.id, actorId: admin.id, fromStatus: 'OPEN', toStatus: 'IN_PROGRESS', note: 'Technician assigned', createdAt: new Date(created.getTime() + 6 * 3600 * 1000) });
+    if (['RESOLVED', 'CLOSED'].includes(status)) events.push({ complaintId: c.id, actorId: admin.id, fromStatus: 'IN_PROGRESS', toStatus: 'RESOLVED', note: 'Fixed', createdAt: c.resolvedAt });
+    if (status === 'CLOSED') events.push({ complaintId: c.id, actorId: s2.userId, fromStatus: 'RESOLVED', toStatus: 'CLOSED', note: 'Confirmed by student', createdAt: new Date(c.resolvedAt.getTime() + 3600 * 1000) });
+    await ComplaintEvent.bulkCreate(events);
+  }
+
   await sequelize.query('ANALYZE');
   const [[counts]] = await sequelize.query(`SELECT
     (SELECT COUNT(*) FROM students) AS students, (SELECT COUNT(*) FROM rooms) AS rooms, (SELECT COUNT(*) FROM beds) AS beds,
-    (SELECT COUNT(*) FROM allocations) AS allocations, (SELECT COUNT(*) FROM preferences) AS preferences`);
+    (SELECT COUNT(*) FROM allocations) AS allocations, (SELECT COUNT(*) FROM preferences) AS preferences,
+    (SELECT COUNT(*) FROM complaints) AS complaints, (SELECT COUNT(*) FROM users WHERE approval_status = 'PENDING') AS pending`);
   console.table(counts);
   console.log(`
 Demo accounts

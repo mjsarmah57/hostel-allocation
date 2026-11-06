@@ -32,10 +32,13 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
+  const register = useCallback(async (payload) => (await api.post('/auth/register', payload)).data, []);
+  const updateUser = useCallback((u) => setUser(u), []);
+
   // UI decisions are driven by PERMISSIONS (same codes the server checks), not role names.
   const can = useCallback((perm) => !!user?.permissions?.includes(perm), [user]);
 
-  const value = useMemo(() => ({ user, booting, login, logout, can }), [user, booting, login, logout, can]);
+  const value = useMemo(() => ({ user, booting, login, logout, can, register, updateUser }), [user, booting, login, logout, can, register, updateUser]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

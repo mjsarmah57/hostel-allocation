@@ -1,15 +1,14 @@
 import { useState } from 'react';
-import { Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { errorMessage } from '../api/client';
-import { Notice } from '../components/States';
+import { Field, Notice } from '../components/ui';
+import AuthShell from './AuthShell';
 
 const DEMO = [
   ['Admin', 'admin@hostel.edu', 'Admin@123'],
-  ['Warden (Aryabhata)', 'warden1@hostel.edu', 'Warden@123'],
-  ['Warden (Bhaskara)', 'warden2@hostel.edu', 'Warden@123'],
-  ['Student HR00001', 's00001@hostel.edu', 'Student@123'],
-  ['Student HR00003', 's00003@hostel.edu', 'Student@123'],
+  ['Warden', 'warden2@hostel.edu', 'Warden@123'],
+  ['Student', 's00001@hostel.edu', 'Student@123'],
 ];
 
 export default function Login() {
@@ -25,10 +24,10 @@ export default function Login() {
   const submit = async (e) => {
     e.preventDefault();
     setError('');
-    if (!form.email || !form.password) return setError('Enter your email and password');
+    if (!form.email || !form.password) return setError('Enter your email and password.');
     setBusy(true);
     try {
-      await login(form.email, form.password);
+      await login(form.email.trim(), form.password);
       navigate(location.state?.from?.pathname || '/', { replace: true });
     } catch (err) {
       setError(errorMessage(err));
@@ -38,33 +37,27 @@ export default function Login() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
+    <AuthShell>
       <div className="w-full max-w-sm">
-        <h1 className="mb-1 text-2xl font-semibold">Hostel Allocation</h1>
-        <p className="mb-6 text-sm text-slate-500">Sign in with your institute account</p>
-        <form onSubmit={submit} className="card space-y-4" noValidate>
+        <h1 className="text-2xl font-bold tracking-tight">Sign in</h1>
+        <p className="mt-1 text-sm text-slate-500">Use your institute email.</p>
+        {location.state?.registered && <div className="mt-5"><Notice kind="success">Registration received. You can sign in once the hostel office approves it.</Notice></div>}
+        <form onSubmit={submit} className="mt-6 space-y-4" noValidate>
           {error && <Notice kind="error">{error}</Notice>}
-          <label className="block text-sm">
-            Email
-            <input className="input mt-1" type="email" autoComplete="username" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-          </label>
-          <label className="block text-sm">
-            Password
-            <input className="input mt-1" type="password" autoComplete="current-password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
-          </label>
-          <button type="submit" className="btn-primary w-full justify-center" disabled={busy}>{busy ? 'Signing in…' : 'Sign in'}</button>
+          <Field label="Email">{(id) => <input id={id} className="input" type="email" autoComplete="username" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />}</Field>
+          <Field label="Password">{(id) => <input id={id} className="input" type="password" autoComplete="current-password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />}</Field>
+          <button type="submit" className="btn-primary w-full py-2.5" disabled={busy}>{busy ? 'Signing in…' : 'Sign in'}</button>
         </form>
-        <div className="mt-4 text-xs text-slate-500">
-          <p className="mb-1">Demo accounts (click to fill):</p>
-          <div className="flex flex-wrap gap-1">
+        <p className="mt-6 text-sm text-slate-600">New student? <Link to="/register" className="font-semibold text-campus-700 hover:underline">Create an account</Link></p>
+        <div className="mt-8 rounded-xl border border-dashed border-slate-300 p-4">
+          <p className="text-xs text-slate-500">Demo accounts. Click to fill in:</p>
+          <div className="mt-2 flex flex-wrap gap-2">
             {DEMO.map(([label, email, password]) => (
-              <button key={email} type="button" className="rounded border border-slate-200 bg-white px-2 py-1 hover:bg-slate-100" onClick={() => setForm({ email, password })}>
-                {label}
-              </button>
+              <button key={email} type="button" className="btn-secondary btn-sm" onClick={() => setForm({ email, password })}>{label}</button>
             ))}
           </div>
         </div>
       </div>
-    </div>
+    </AuthShell>
   );
 }

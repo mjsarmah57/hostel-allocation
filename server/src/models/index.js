@@ -28,6 +28,9 @@ const User = sequelize.define('users', {
   name: { type: DataTypes.STRING, allowNull: false },
   roleId: { type: DataTypes.INTEGER, allowNull: false },
   isActive: { type: DataTypes.BOOLEAN, defaultValue: true },
+  approvalStatus: { type: DataTypes.ENUM('PENDING', 'APPROVED', 'REJECTED'), defaultValue: 'APPROVED' },
+  phone: DataTypes.STRING,
+  mustChangePassword: { type: DataTypes.BOOLEAN, defaultValue: false },
   createdAt: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
 });
 
@@ -136,6 +139,30 @@ const FeeReceipt = sequelize.define('fee_receipts', {
   verifiedAt: DataTypes.DATE,
 });
 
+const Complaint = sequelize.define('complaints', {
+  id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+  studentId: { type: DataTypes.INTEGER, allowNull: false },
+  roomId: { type: DataTypes.INTEGER, allowNull: false },
+  category: { type: DataTypes.ENUM('ELECTRICAL', 'PLUMBING', 'FURNITURE', 'CLEANING', 'INTERNET', 'OTHER'), allowNull: false },
+  priority: { type: DataTypes.ENUM('LOW', 'MEDIUM', 'HIGH'), defaultValue: 'MEDIUM' },
+  title: { type: DataTypes.STRING, allowNull: false },
+  description: { type: DataTypes.TEXT, allowNull: false },
+  status: { type: DataTypes.ENUM('OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'), defaultValue: 'OPEN' },
+  createdAt: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
+  updatedAt: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
+  resolvedAt: DataTypes.DATE,
+});
+
+const ComplaintEvent = sequelize.define('complaint_events', {
+  id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+  complaintId: { type: DataTypes.INTEGER, allowNull: false },
+  actorId: { type: DataTypes.INTEGER, allowNull: false },
+  fromStatus: DataTypes.ENUM('OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'),
+  toStatus: { type: DataTypes.ENUM('OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'), allowNull: false },
+  note: DataTypes.STRING,
+  createdAt: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
+});
+
 // ---------- Associations ----------
 Role.hasMany(User, { foreignKey: 'roleId' });
 User.belongsTo(Role, { foreignKey: 'roleId' });
@@ -159,8 +186,15 @@ Preference.belongsTo(Room, { foreignKey: 'roomId' });
 SwapRequest.belongsTo(Allocation, { foreignKey: 'requesterAllocId', as: 'requester' });
 SwapRequest.belongsTo(Allocation, { foreignKey: 'targetAllocId', as: 'target' });
 
+Complaint.belongsTo(Student, { foreignKey: 'studentId' });
+Complaint.belongsTo(Room, { foreignKey: 'roomId' });
+Complaint.hasMany(ComplaintEvent, { foreignKey: 'complaintId', as: 'events' });
+ComplaintEvent.belongsTo(User, { foreignKey: 'actorId', as: 'actor' });
+
 module.exports = {
   sequelize,
+  Complaint,
+  ComplaintEvent,
   ACTIVE_STATUSES,
   Role,
   Permission,

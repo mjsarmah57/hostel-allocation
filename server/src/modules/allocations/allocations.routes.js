@@ -4,7 +4,7 @@ const express = require('express');
 const { z } = require('zod');
 const { QueryTypes } = require('sequelize');
 const sequelize = require('../../lib/db');
-const { Allocation, Bed, Room, Hostel, FeeReceipt, Student, ACTIVE_STATUSES } = require('../../models');
+const { Allocation, Bed, Room, Hostel, FeeReceipt, Student, User, ACTIVE_STATUSES } = require('../../models');
 const validate = require('../../middleware/validate');
 const { requirePermission, assertHostelScope } = require('../../middleware/authorize');
 const { receiptUpload, verifyMagicBytes, RECEIPT_DIR } = require('../../middleware/upload');
@@ -109,7 +109,9 @@ router.get('/', requirePermission('allocation:read'), validate({ query: listQuer
 
 router.get('/:id', requirePermission(['allocation:read', 'allocation:read_own']), validate({ params: idParam }), async (req, res, next) => {
   try {
-    const a = await Allocation.findByPk(req.params.id, { include: [...detailInclude, { model: Student, attributes: ['id', 'rollNo', 'year'] }] });
+    const a = await Allocation.findByPk(req.params.id, {
+      include: [...detailInclude, { model: Student, attributes: ['id', 'rollNo', 'year', 'program', 'gender', 'cgpa'], include: [{ model: User, attributes: ['name', 'email', 'phone'] }] }],
+    });
     if (!a) throw notFound('Allocation');
     if (req.user.studentId) {
       if (a.studentId !== req.user.studentId) throw forbidden('This is not your allocation');

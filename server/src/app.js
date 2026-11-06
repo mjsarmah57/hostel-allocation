@@ -21,6 +21,11 @@ const allocationRoutes = require('./modules/allocations/allocations.routes');
 const swapRoutes = require('./modules/swaps/swaps.routes');
 const reportRoutes = require('./modules/reports/reports.routes');
 const adminRoutes = require('./modules/admin/admin.routes');
+const userRoutes = require('./modules/users/users.routes');
+const studentRoutes = require('./modules/students/students.routes');
+const roomRoutes = require('./modules/rooms/rooms.routes');
+const dashboardRoutes = require('./modules/dashboard/dashboard.routes');
+const complaintRoutes = require('./modules/complaints/complaints.routes');
 
 const app = express();
 app.set('trust proxy', 1); // behind Render/Railway's proxy: needed for rate limiting by real IP
@@ -53,6 +58,11 @@ v1.use('/allocations', allocationRoutes);
 v1.use('/swaps', swapRoutes);
 v1.use('/reports', reportRoutes);
 v1.use('/admin', adminRoutes);
+v1.use('/users', userRoutes);
+v1.use('/students', studentRoutes);
+v1.use('/rooms', roomRoutes);
+v1.use('/dashboard', dashboardRoutes);
+v1.use('/complaints', complaintRoutes);
 v1.use('/notifications', adminRoutes.notificationsRouter);
 app.use('/api/v1', v1);
 

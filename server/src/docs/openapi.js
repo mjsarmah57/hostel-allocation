@@ -21,7 +21,7 @@ module.exports = {
       'protected by a row-locking transaction. Every error uses the same shape: `{ error: { code, message, details?, requestId } }`.',
   },
   servers: [{ url: '/api/v1' }],
-  tags: ['Auth', 'Hostels', 'Rounds', 'Allocations', 'Swaps', 'Reports', 'Admin'].map((name) => ({ name })),
+  tags: ['Auth', 'Users', 'Students', 'Hostels', 'Rooms', 'Rounds', 'Allocations', 'Swaps', 'Complaints', 'Dashboard', 'Reports', 'Admin'].map((name) => ({ name })),
   components: {
     securitySchemes: { bearerAuth: { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' } },
     schemas: {
@@ -84,9 +84,64 @@ module.exports = {
       },
     },
     '/auth/logout': { post: { tags: ['Auth'], security: [], summary: 'Revoke the refresh token and clear the cookie', responses: { 204: { description: 'Logged out' } } } },
-    '/auth/me': { get: { tags: ['Auth'], summary: 'Current user', responses: { 200: ok('User'), ...common } } },
+    '/auth/me': {
+      get: { tags: ['Auth'], summary: 'Current user', responses: { 200: ok('User'), ...common } },
+      patch: { tags: ['Auth'], summary: 'Update own name / phone', requestBody: json({ type: 'object', properties: { name: { type: 'string' }, phone: { type: 'string', example: '9876543210' } } }), responses: { 200: ok('Updated user'), ...common, ...v } },
+    },
+    '/auth/register': {
+      post: {
+        tags: ['Auth'], security: [], summary: 'Student self-registration (starts PENDING until an admin approves)',
+        requestBody: json({ type: 'object', required: ['name', 'email', 'phone', 'password', 'rollNo', 'gender', 'year', 'program', 'cgpa'], properties: { name: { type: 'string' }, email: { type: 'string' }, phone: { type: 'string' }, password: { type: 'string', description: '8+ chars, upper, lower, digit' }, rollNo: { type: 'string' }, gender: { type: 'string', enum: ['MALE', 'FEMALE'] }, year: { type: 'integer' }, program: { type: 'string' }, cgpa: { type: 'number' }, isPwd: { type: 'boolean' } } },
+          { name: 'Meera Baruah', email: 'meera@hostel.edu', phone: '9876501234', password: 'Hostel@2026', rollNo: 'MCA26001', gender: 'FEMALE', year: 1, program: 'MCA', cgpa: 8.7 }),
+        responses: { 201: ok('Registered, pending approval'), 409: err('Email or roll number already registered'), 429: err('Too many attempts'), ...v },
+      },
+    },
+    '/auth/change-password': {
+      post: { tags: ['Auth'], summary: 'Change password; revokes all other sessions', requestBody: json({ type: 'object', properties: { currentPassword: { type: 'string' }, newPassword: { type: 'string' } } }), responses: { 200: ok('New access token + user'), 403: err('Current password incorrect'), ...common, ...v } },
+    },
+
+    '/users': { get: { tags: ['Users'], summary: 'List users (admin)', parameters: [{ name: 'role', in: 'query', schema: { type: 'string', enum: ['student', 'warden', 'admin'] } }, { name: 'status', in: 'query', schema: { type: 'string', enum: ['PENDING', 'APPROVED', 'REJECTED'] } }, { name: 'q', in: 'query', schema: { type: 'string' } }, ...pageQ], responses: { 200: ok('Page of users'), ...common } } },
+    '/users/{id}': { patch: { tags: ['Users'], summary: 'Activate/deactivate, or reassign a warden (admin)', parameters: [idParam], requestBody: json({ type: 'object', properties: { isActive: { type: 'boolean' }, hostelId: { type: 'integer', nullable: true } } }), responses: { 200: ok('Updated'), 422: err('Cannot deactivate yourself'), ...common } } },
+    '/users/{id}/approval': { patch: { tags: ['Users'], summary: 'Approve or reject a pending registration (admin)', parameters: [idParam], requestBody: json({ type: 'object', properties: { approve: { type: 'boolean' }, reason: { type: 'string' } } }), responses: { 200: ok('Decision saved'), 409: err('Not pending'), ...common } } },
+    '/users/wardens': { post: { tags: ['Users'], summary: 'Create a warden; returns a one-time temporary password', requestBody: json({ type: 'object', properties: { name: { type: 'string' }, email: { type: 'string' }, phone: { type: 'string' }, hostelId: { type: 'integer' } } }), responses: { 201: ok('Warden + temporaryPassword'), 409: err('Email exists'), ...common, ...v } } },
+    '/users/{id}/reset-password': { post: { tags: ['Users'], summary: 'Reset a password; returns a one-time temporary password', parameters: [idParam], responses: { 200: ok('temporaryPassword'), ...common } } },
+    '/users/import': {
+      post: {
+        tags: ['Users'], summary: 'Bulk-create students from CSV (name,email,rollNo,gender,year,program,cgpa[,phone])',
+        requestBody: { required: true, content: { 'multipart/form-data': { schema: { type: 'object', properties: { file: { type: 'string', format: 'binary' } } } } } },
+        responses: { 201: ok('created / failed counts, per-line errors, temporaryPassword'), 415: err('Not a CSV'), 422: err('Missing columns / no rows'), ...common },
+      },
+    },
+
+    '/students': { get: { tags: ['Students'], summary: 'Student directory (warden: own residents)', parameters: [{ name: 'q', in: 'query', schema: { type: 'string' } }, { name: 'year', in: 'query', schema: { type: 'integer' } }, { name: 'allocated', in: 'query', schema: { type: 'string', enum: ['true', 'false'] } }, ...pageQ, { name: 'sort', in: 'query', schema: { type: 'string', example: '-cgpa' } }], responses: { 200: ok('Page of students'), ...common } } },
+    '/students/{id}': { get: { tags: ['Students'], summary: 'Full profile: allocations, preferences, complaints, swaps', parameters: [idParam], responses: { 200: ok('Profile'), 403: err('Not in your hostel'), 404: err('Not found'), ...common } } },
+
+    '/hostels/{id}': {
+      get: { tags: ['Hostels'], summary: 'Hostel detail with floor-by-floor room map', parameters: [idParam, sessionQ], responses: { 200: ok('Hostel'), 404: err('Not found'), ...common } },
+      patch: { tags: ['Hostels'], summary: 'Edit hostel / assign warden (admin)', parameters: [idParam], requestBody: json({ type: 'object', properties: { name: { type: 'string' }, allowedYears: { type: 'array', items: { type: 'integer' } }, wardenId: { type: 'integer', nullable: true } } }), responses: { 200: ok('Updated'), ...common, ...v } },
+    },
+    '/rooms/{id}': {
+      get: { tags: ['Rooms'], summary: 'Beds with occupants, history and complaints (names for staff only)', parameters: [idParam], responses: { 200: ok('Room'), ...common } },
+      patch: { tags: ['Rooms'], summary: 'Change capacity (admin); never-used beds only can be removed', parameters: [idParam], requestBody: json({ type: 'object', properties: { capacity: { type: 'integer', minimum: 1, maximum: 6 } } }), responses: { 200: ok('Updated'), 409: err('Bed has allocation history'), ...common } },
+    },
+
+    '/complaints': {
+      get: { tags: ['Complaints'], summary: 'List complaints (student: own; warden: own hostel; admin: all)', parameters: [{ name: 'status', in: 'query', schema: { type: 'string', enum: ['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'] } }, { name: 'category', in: 'query', schema: { type: 'string' } }, { name: 'priority', in: 'query', schema: { type: 'string' } }, ...pageQ], responses: { 200: ok('Page'), ...common } },
+      post: { tags: ['Complaints'], summary: 'Raise a complaint about your current room (student)', requestBody: json({ type: 'object', required: ['category', 'title', 'description'], properties: { category: { type: 'string', enum: ['ELECTRICAL', 'PLUMBING', 'FURNITURE', 'CLEANING', 'INTERNET', 'OTHER'] }, priority: { type: 'string', enum: ['LOW', 'MEDIUM', 'HIGH'] }, title: { type: 'string' }, description: { type: 'string' } } }, { category: 'ELECTRICAL', priority: 'HIGH', title: 'Fan not working', description: 'The ceiling fan stopped working last night.' }), responses: { 201: ok('Complaint'), 409: err('No room this session / too many open'), ...common, ...v } },
+    },
+    '/complaints/{id}': { get: { tags: ['Complaints'], summary: 'Complaint with timeline and the actions allowed for the caller', parameters: [idParam], responses: { 200: ok('Complaint'), 403: err('Not yours / not your hostel'), ...common } } },
+    '/complaints/{id}/status': {
+      patch: {
+        tags: ['Complaints'], summary: 'Move a complaint', parameters: [idParam],
+        description: 'Staff: OPEN → IN_PROGRESS → RESOLVED (or back to OPEN). Student: RESOLVED → CLOSED (confirm) or → OPEN (reopen); OPEN → CLOSED (withdraw).',
+        requestBody: json({ type: 'object', properties: { status: { type: 'string' }, note: { type: 'string' } } }),
+        responses: { 200: ok('Complaint'), 403: err('Wrong actor for this transition'), 409: err('Invalid transition'), ...common },
+      },
+    },
+    '/dashboard': { get: { tags: ['Dashboard'], summary: 'Tiles and chart data in one call (warden: own hostel)', parameters: [sessionQ], responses: { 200: ok('Dashboard'), ...common } } },
 
     '/hostels': {
+      post: { tags: ['Hostels'], summary: 'Create a hostel (admin)', requestBody: json({ type: 'object', required: ['name', 'code', 'gender', 'allowedYears'], properties: { name: { type: 'string' }, code: { type: 'string' }, gender: { type: 'string', enum: ['MALE', 'FEMALE'] }, allowedYears: { type: 'array', items: { type: 'integer' } }, wardenId: { type: 'integer' } } }), responses: { 201: ok('Hostel'), 409: err('Name/code exists'), ...common, ...v } },
       get: {
         tags: ['Hostels'], summary: 'Hostels with bed and occupancy counts',
         parameters: [sessionQ, { name: 'eligible', in: 'query', schema: { type: 'string', enum: ['true', 'false'] }, description: 'Students: only hostels they may live in' }],
@@ -94,6 +149,11 @@ module.exports = {
       },
     },
     '/hostels/{id}/rooms': {
+      post: {
+        tags: ['Rooms'], summary: 'Add a range of rooms on one floor (admin)', parameters: [idParam],
+        requestBody: json({ type: 'object', properties: { floor: { type: 'integer' }, from: { type: 'integer' }, to: { type: 'integer' }, capacity: { type: 'integer' } } }, { floor: 1, from: 1, to: 10, capacity: 2 }),
+        responses: { 201: ok('Rooms created'), 409: err('Room numbers already exist'), ...common, ...v },
+      },
       get: {
         tags: ['Hostels'], summary: 'Rooms of a hostel with free-bed counts (paginated)',
         parameters: [idParam, sessionQ, { name: 'floor', in: 'query', schema: { type: 'integer' } }, { name: 'available', in: 'query', schema: { type: 'string', enum: ['true', 'false'] } }, ...pageQ, { name: 'sort', in: 'query', schema: { type: 'string', enum: ['roomNo', '-roomNo', 'floor', '-floor', 'freeBeds', '-freeBeds'] } }],

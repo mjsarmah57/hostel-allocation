@@ -8,6 +8,14 @@ Built for CSA504 Full Stack Development. Every syllabus module maps to something
 1. **Round 1, priority allocation.** Students rank up to five rooms. The admin runs a batch job that orders students by *PwD → year (seniority) → CGPA* and gives each one their highest-ranked room with a free bed. If all their chosen rooms are full, they get any free bed in the hostel of their first choice.
 2. **Round 2, open booking.** Students left without a bed book first-come-first-served. **Fifty students hitting the last bed at the same instant produce exactly one `201` and forty-nine `409`s.**
 
+**Around that core:**
+
+- **Accounts.** Students self-register and an admin approves them. Admins create wardens, reset passwords with one-time temporary passwords, deactivate accounts, and bulk-import students from CSV. Everyone can edit their profile and change their password.
+- **Hostels and rooms.** Admins create hostels, assign wardens, and add rooms floor by floor. Room capacity can grow, or shrink only where beds were never used.
+- **Complaints.** Students report problems in their room. Wardens work them through *Open → In progress → Resolved*, and the student confirms the fix. Every step is kept as a timeline.
+- **Dashboard.** Occupancy by hostel, the fee and check-in pipeline, which preference students got, complaints by category, and recent activity. Wardens see only their own hostel.
+- **Detail pages** for every student, hostel (with a floor-by-floor room map), room, allocation and complaint.
+
 ```
 hostel-allocation/
 ├── server/   Express API · PostgreSQL (Sequelize) · MongoDB (Mongoose)
@@ -55,10 +63,11 @@ docker compose exec api npm run seed
 | Student | `s00001@hostel.edu` | `Student@123` | HR00001 Aarav Sharma, male, year 2, no preferences yet |
 | Student | `s00002@hostel.edu` | `Student@123` | HR00002 Rohan Das, male, year 2, already has preferences |
 | Student | `s00003@hostel.edu` | `Student@123` | HR00003 Ananya Iyer, female, year 1 |
+| Pending student | `new1@hostel.edu` … `new6@hostel.edu` | `Student@123` | Self-registered, waiting for admin approval (sign-in returns 403) |
 
 All 5,000 seeded students use `s00001` … `s05000` with the same password.
 
-**Seed volume** (so indexes visibly matter): 10 hostels · 1,500 rooms · ~3,800 beds · 5,000 students · 4 past sessions (~12,000 historical allocations) · current round 2026-27 in `PREFERENCES_OPEN` with ~11,000 preferences.
+**Seed volume** (so indexes visibly matter): 10 hostels · 1,500 rooms · ~3,800 beds · 5,000 students · 4 past sessions (~12,000 historical allocations) · current round 2026-27 in `PREFERENCES_OPEN` with ~11,000 preferences · 90 historical complaints · 6 pending registrations.
 
 ---
 
@@ -168,7 +177,19 @@ const TRANSITIONS = {
 
 The table says both *which* moves are legal and *which permission* each one needs. Invalid moves return `409` and list `allowedNext`. A cron job (`node-cron`, hourly) releases `ALLOCATED` rows whose fee deadline has passed, using a single atomic `UPDATE … RETURNING`.
 
-### 4. Contextual authorisation
+### 4. Complaint workflow: who may do what
+
+```js
+const TRANSITIONS = {
+  OPEN:        { IN_PROGRESS: 'staff', RESOLVED: 'staff', CLOSED: 'owner' },
+  IN_PROGRESS: { RESOLVED: 'staff', OPEN: 'staff' },
+  RESOLVED:    { CLOSED: 'owner', OPEN: 'owner' },   // the student confirms the fix, or reopens
+};
+```
+
+The table records the *actor* as well as the move. A student can't mark their own complaint resolved (`403`), and a warden can't close it for them. Every move adds a row to `complaint_events`, which becomes the timeline on the detail page.
+
+### 5. Contextual authorisation
 
 RBAC checks **permissions** (`receipt:verify`), never role names. On top of that, a warden may act **only on their own hostel**: warden 1 holds `receipt:verify` but still gets `403` on a Bhaskara Hall allocation. Admins hold `hostel:all`, which bypasses the scope check. Approving a cross-hostel swap requires authority over **both** hostels.
 
@@ -194,7 +215,8 @@ RBAC checks **permissions** (`receipt:verify`), never role names. On top of that
 | `npm run db:setup` | Migrate + seed |
 | `npm run demo:concurrency [-- N]` | Last-bed race with N simultaneous requests (default 50) |
 | `npm run demo:explain` | EXPLAIN ANALYZE before/after for four indexes |
-| `node scripts/e2e-check.js` | 40+ HTTP checks across the whole cycle (run on a fresh seed) |
+| `node scripts/e2e-check.js` | 42 HTTP checks across the allocation cycle (run on a fresh seed) |
+| `node scripts/e2e-advanced.js` | 50 checks: registration, users, CSV import, hostels/rooms, dashboard, complaints (fresh seed) |
 
 ---
 
@@ -204,8 +226,13 @@ Base path `/api/v1`. Full OpenAPI spec at **`/api/docs`** (raw JSON at `/api/ope
 
 | Area | Endpoints |
 |---|---|
-| Auth | `POST /auth/login` · `POST /auth/refresh` · `POST /auth/logout` · `GET /auth/me` |
-| Hostels | `GET /hostels` · `GET /hostels/:id/rooms?floor=&available=&sort=&page=&limit=` |
+| Auth | `POST /auth/register` · `POST /auth/login` · `POST /auth/refresh` · `POST /auth/logout` · `GET\|PATCH /auth/me` · `POST /auth/change-password` |
+| Users (admin) | `GET /users` · `PATCH /users/:id/approval` · `POST /users/wardens` · `PATCH /users/:id` · `POST /users/:id/reset-password` · `POST /users/import` (CSV) |
+| Students | `GET /students?q=&year=&allocated=&sort=` · `GET /students/:id` |
+| Rooms | `POST /hostels/:id/rooms` · `GET /rooms/:id` · `PATCH /rooms/:id` |
+| Complaints | `GET /complaints` · `POST /complaints` · `GET /complaints/:id` · `PATCH /complaints/:id/status` |
+| Dashboard | `GET /dashboard` |
+| Hostels | `GET /hostels` · `POST /hostels` · `GET\|PATCH /hostels/:id` · `GET /hostels/:id/rooms?floor=&available=&sort=&page=&limit=` |
 | Rounds | `GET /rounds` · `GET /rounds/current` · `POST /rounds` · `PATCH /rounds/:id/status` · `GET\|PUT /rounds/:id/preferences` · `POST /rounds/:id/run` · `POST /rounds/:id/book` |
 | Allocations | `GET /allocations/me` · `GET /allocations?status=&hostelId=&q=&sort=&page=` · `GET /allocations/:id` · `PATCH /allocations/:id/status` · `POST\|GET /allocations/:id/receipt` |
 | Swaps | `GET /swaps` · `POST /swaps` · `PATCH /swaps/:id/respond` · `PATCH /swaps/:id/cancel` · `PATCH /swaps/:id/decision` |
@@ -244,4 +271,5 @@ The live setup is **one Render web service** that runs the API *and* serves the 
 | **3 Databases** | Normalised schema + ER diagram · Sequelize (SQL) + Mongoose (MongoDB) · 13 indexes, each justified by a comment in `001_init.sql` · `npm run demo:explain` · transactions in booking, Round 1, swaps, receipt upload, refresh rotation · seed of 5,000 students |
 | **4 Security** | JWT access + refresh with rotation and reuse detection · bcrypt (12 rounds in production) · permission-driven RBAC + hostel scope · multer with MIME, size **and** magic-byte checks · pino logs with request IDs · env config validated at boot · helmet, CORS allow-list, rate limiting on auth |
 | **5 Docs & deploy** | Swagger UI at `/api/docs` · Dockerfile + docker-compose · this README |
+| **Registration & accounts** | Self-registration with password policy and admin approval (`403 ACCOUNT_PENDING` on sign-in until approved) · temporary passwords that must be changed at first sign-in · password change revokes every other session |
 | **Frontend** | Vite + React · single-flight refresh interceptor (`client/src/api/client.js`) · permission-driven navigation · paginated/filtered/sorted lists mapped to query params · upload with progress bar · loading/error/empty states on every view |

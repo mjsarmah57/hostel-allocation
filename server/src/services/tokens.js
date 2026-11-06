@@ -15,7 +15,7 @@ async function buildClaims(userId) {
       { model: Hostel, as: 'wardenOf', attributes: ['id'] },
     ],
   });
-  if (!user || !user.isActive) return null;
+  if (!user || !user.isActive || user.approvalStatus !== 'APPROVED') return null;
   return {
     user,
     claims: {
