@@ -1,0 +1,34 @@
+# Render Blueprint: one web service that runs the API and serves the React client.
+# PostgreSQL lives on Neon; MongoDB (audit logs) is optional via MONGO_URI.
+services:
+  - type: web
+    name: hostel-allocation
+    runtime: node
+    plan: free
+    region: singapore
+    buildCommand: cd client && npm ci && npm run build && cd ../server && npm ci --omit=dev
+    startCommand: cd server && npm run start:prod
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      - key: VITE_API_URL
+        value: /api/v1
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_SSL
+        value: "true"
+      - key: MONGO_URI
+        sync: false
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: BCRYPT_ROUNDS
+        value: "12"
+      - key: AUTH_RATE_LIMIT
+        value: "30"
+      - key: CORS_ORIGINS
+        value: http://localhost:5173

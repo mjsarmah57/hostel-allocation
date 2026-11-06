@@ -1,0 +1,1195 @@
+{
+  "info": {
+    "name": "Hostel Room Allocation API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Run \"Login as …\" first; every other request uses {{accessToken}}. Set {{baseUrl}} to your deployed API for the live demo."
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:4000/api/v1"
+    },
+    {
+      "key": "accessToken",
+      "value": ""
+    },
+    {
+      "key": "roundId",
+      "value": "5"
+    },
+    {
+      "key": "hostelId",
+      "value": "2"
+    },
+    {
+      "key": "roomId",
+      "value": "160"
+    },
+    {
+      "key": "allocationId",
+      "value": "1"
+    },
+    {
+      "key": "swapId",
+      "value": "1"
+    }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login as admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j = pm.response.json();",
+                  "if (j.accessToken) pm.collectionVariables.set('accessToken', j.accessToken);",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@hostel.edu\",\n  \"password\": \"Admin@123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Stores the access token in {{accessToken}}. The refresh token arrives as an httpOnly cookie."
+          }
+        },
+        {
+          "name": "Login as warden 1",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j = pm.response.json();",
+                  "if (j.accessToken) pm.collectionVariables.set('accessToken', j.accessToken);",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"warden1@hostel.edu\",\n  \"password\": \"Warden@123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Stores the access token in {{accessToken}}. The refresh token arrives as an httpOnly cookie."
+          }
+        },
+        {
+          "name": "Login as student HR00001",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j = pm.response.json();",
+                  "if (j.accessToken) pm.collectionVariables.set('accessToken', j.accessToken);",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"s00001@hostel.edu\",\n  \"password\": \"Student@123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Stores the access token in {{accessToken}}. The refresh token arrives as an httpOnly cookie."
+          }
+        },
+        {
+          "name": "Login — wrong password (401)",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@hostel.edu\",\n  \"password\": \"wrong\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Login — invalid body (422)",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"nope\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Refresh access token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j = pm.response.json();",
+                  "if (j.accessToken) pm.collectionVariables.set('accessToken', j.accessToken);",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/refresh",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "refresh"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Me",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "logout"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Hostels",
+      "item": [
+        {
+          "name": "List hostels with occupancy",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/hostels",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "hostels"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Hostels I am eligible for (student)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/hostels?eligible=true",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "hostels"
+              ],
+              "query": [
+                {
+                  "key": "eligible",
+                  "value": "true"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Rooms — available, sorted, paginated",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/hostels/{{hostelId}}/rooms?available=true&sort=-freeBeds&page=1&limit=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "hostels",
+                "{{hostelId}}",
+                "rooms"
+              ],
+              "query": [
+                {
+                  "key": "available",
+                  "value": "true"
+                },
+                {
+                  "key": "sort",
+                  "value": "-freeBeds"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Rooms — floor filter",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/hostels/{{hostelId}}/rooms?floor=2",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "hostels",
+                "{{hostelId}}",
+                "rooms"
+              ],
+              "query": [
+                {
+                  "key": "floor",
+                  "value": "2"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Rounds",
+      "item": [
+        {
+          "name": "List rounds",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/rounds",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "rounds"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Current round",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/rounds/current",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "rounds",
+                "current"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create round (admin, 201)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"session\": \"2027-28\",\n  \"name\": \"Allocation 2027-28\",\n  \"feeWindowDays\": 7\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/rounds",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "rounds"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Open preferences (admin)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"PREFERENCES_OPEN\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/rounds/{{roundId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "rounds",
+                "{{roundId}}",
+                "status"
+              ]
+            }
+          }
+        },
+        {
+          "name": "My preferences (student)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/rounds/{{roundId}}/preferences/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "rounds",
+                "{{roundId}}",
+                "preferences",
+                "me"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Submit ranked preferences (student)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"roomIds\": [\n    151,\n    152,\n    153\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/rounds/{{roundId}}/preferences",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "rounds",
+                "{{roundId}}",
+                "preferences"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Run priority allocation (admin)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/rounds/{{roundId}}/run",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "rounds",
+                "{{roundId}}",
+                "run"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Run again → 409",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/rounds/{{roundId}}/run",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "rounds",
+                "{{roundId}}",
+                "run"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Open booking (admin)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"BOOKING_OPEN\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/rounds/{{roundId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "rounds",
+                "{{roundId}}",
+                "status"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Book a bed (student, 201 / 409)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"roomId\": 160\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/rounds/{{roundId}}/book",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "rounds",
+                "{{roundId}}",
+                "book"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Close round (admin)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"CLOSED\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/rounds/{{roundId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "rounds",
+                "{{roundId}}",
+                "status"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Allocations",
+      "item": [
+        {
+          "name": "My allocation (student)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/allocations/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "allocations",
+                "me"
+              ]
+            }
+          }
+        },
+        {
+          "name": "List — own hostel (warden) / all (admin)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/allocations?status=FEE_SUBMITTED&sort=-createdAt&page=1&limit=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "allocations"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "FEE_SUBMITTED"
+                },
+                {
+                  "key": "sort",
+                  "value": "-createdAt"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "List — other hostel as warden → 403",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/allocations?hostelId=5",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "allocations"
+              ],
+              "query": [
+                {
+                  "key": "hostelId",
+                  "value": "5"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get one",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/allocations/{{allocationId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "allocations",
+                "{{allocationId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Upload fee receipt (student, multipart)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "receipt",
+                  "type": "file",
+                  "src": ""
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/allocations/{{allocationId}}/receipt",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "allocations",
+                "{{allocationId}}",
+                "receipt"
+              ]
+            },
+            "description": "Pick a PDF/JPEG/PNG under 2 MB for the \"receipt\" field."
+          }
+        },
+        {
+          "name": "Download receipt",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/allocations/{{allocationId}}/receipt",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "allocations",
+                "{{allocationId}}",
+                "receipt"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Verify receipt (warden)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"VERIFIED\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/allocations/{{allocationId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "allocations",
+                "{{allocationId}}",
+                "status"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Reject receipt (warden)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"ALLOCATED\",\n  \"note\": \"Amount does not match\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/allocations/{{allocationId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "allocations",
+                "{{allocationId}}",
+                "status"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Check in (warden)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"CHECKED_IN\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/allocations/{{allocationId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "allocations",
+                "{{allocationId}}",
+                "status"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Invalid transition → 409",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"VACATED\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/allocations/{{allocationId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "allocations",
+                "{{allocationId}}",
+                "status"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Swaps",
+      "item": [
+        {
+          "name": "List my / my hostel swaps",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/swaps",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "swaps"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Request swap (student)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"targetRollNo\": \"HR00002\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/swaps",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "swaps"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Respond (other student)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accept\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/swaps/{{swapId}}/respond",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "swaps",
+                "{{swapId}}",
+                "respond"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Cancel (requester)",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/swaps/{{swapId}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "swaps",
+                "{{swapId}}",
+                "cancel"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Approve (warden of both hostels / admin)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"approve\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/swaps/{{swapId}}/decision",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "swaps",
+                "{{swapId}}",
+                "decision"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reports & Admin",
+      "item": [
+        {
+          "name": "Occupancy report",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reports/occupancy",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reports",
+                "occupancy"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Run release-unpaid job now (admin)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/jobs/release-unpaid",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "jobs",
+                "release-unpaid"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Audit log for an allocation (admin)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/audit-logs?entity=allocation&entityId={{allocationId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "audit-logs"
+              ],
+              "query": [
+                {
+                  "key": "entity",
+                  "value": "allocation"
+                },
+                {
+                  "key": "entityId",
+                  "value": "{{allocationId}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "My notifications",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/notifications/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notifications",
+                "me"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Viva: 403 demo",
+      "item": [
+        {
+          "name": "Login as student (step 1)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j = pm.response.json();",
+                  "if (j.accessToken) pm.collectionVariables.set('accessToken', j.accessToken);",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"s00001@hostel.edu\",\n  \"password\": \"Student@123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Stores the access token in {{accessToken}}. The refresh token arrives as an httpOnly cookie."
+          }
+        },
+        {
+          "name": "Step 2: student calls a warden endpoint → 403",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"VERIFIED\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/allocations/{{allocationId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "allocations",
+                "{{allocationId}}",
+                "status"
+              ]
+            },
+            "description": "The UI hides this button for students; the server refuses it anyway."
+          }
+        }
+      ]
+    }
+  ]
+}

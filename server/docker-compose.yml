@@ -1,0 +1,44 @@
+# Local stack: PostgreSQL + MongoDB + API.
+#   docker compose up --build
+#   docker compose exec api npm run seed
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: hostel
+    ports: ["5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      retries: 10
+
+  mongo:
+    image: mongo:7
+    ports: ["27017:27017"]
+    volumes: [mongodata:/data/db]
+
+  api:
+    build: .
+    depends_on:
+      postgres: { condition: service_healthy }
+      mongo: { condition: service_started }
+    environment:
+      NODE_ENV: development
+      PORT: 4000
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/hostel
+      MONGO_URI: mongodb://mongo:27017/hostel_logs
+      JWT_ACCESS_SECRET: docker_dev_access_secret_change_me_32chars
+      JWT_REFRESH_SECRET: docker_dev_refresh_secret_change_me_32chars
+      CORS_ORIGINS: http://localhost:5173
+      AUTH_RATE_LIMIT: 200
+      BCRYPT_ROUNDS: 10
+    ports: ["4000:4000"]
+    volumes: [uploads:/app/uploads]
+
+volumes:
+  pgdata:
+  mongodata:
+  uploads:

@@ -1,0 +1,45 @@
+{
+  "name": "hostel-allocation-api",
+  "version": "1.0.0",
+  "description": "Hostel Room Allocation System - REST API",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "migrate": "node scripts/migrate.js",
+    "seed": "node scripts/seed.js",
+    "db:setup": "npm run migrate && npm run seed",
+    "demo:concurrency": "node scripts/concurrency-test.js",
+    "demo:explain": "node scripts/explain-demo.js",
+    "start:prod": "node scripts/migrate.js && node scripts/seed-if-empty.js && node src/server.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.9",
+    "express": "^4.22.3",
+    "express-rate-limit": "^8.7.3",
+    "helmet": "^8.3.0",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^9.12.0",
+    "multer": "^1.4.4",
+    "node-cron": "^4.6.0",
+    "pg": "^8.23.1",
+    "pg-hstore": "^2.3.4",
+    "pino": "^10.4.0",
+    "pino-http": "^11.0.0",
+    "sequelize": "^6.37.8",
+    "swagger-ui-express": "^5.0.1",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "autocannon": "^9.0.0",
+    "nodemon": "^3.1.14"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
